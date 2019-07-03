@@ -23,9 +23,9 @@ import java.util.concurrent.Future;
 @RequestMapping("/film")
 public class FilmController {
 
-    @Reference(interfaceClass = FilmServiceAPI.class)
+    @Reference(interfaceClass = FilmServiceAPI.class,check = false)
     private FilmServiceAPI filmServiceAPI;
-    @Reference(interfaceClass = FilmAsynServiceAPI.class,async = true)
+    @Reference(interfaceClass = FilmAsynServiceAPI.class,check = false,async = true)
     private FilmAsynServiceAPI filmAsynServiceAPI;
 
     private static final String IMG_PRE = "http://img.meetingshop.cn/";
