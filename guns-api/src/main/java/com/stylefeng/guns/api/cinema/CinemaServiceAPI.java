@@ -28,4 +28,11 @@ public interface CinemaServiceAPI {
 //8、根据放映场次查询播放的电影编号，然后根据电影编号获取对应的电影信息
     FilmInfoVO getFilmInfoByFieldId(int fieldId);
 
+    /**
+     * 为订单模块服务的接口
+     * @param field
+     * @return
+     */
+    OrderQueryVO getOrderNeeds(int field);
+
 }

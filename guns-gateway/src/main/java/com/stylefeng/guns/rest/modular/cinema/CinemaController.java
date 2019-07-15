@@ -4,6 +4,7 @@ import com.alibaba.dubbo.config.annotation.Reference;
 import com.baomidou.mybatisplus.plugins.Page;
 import com.stylefeng.guns.api.cinema.CinemaServiceAPI;
 import com.stylefeng.guns.api.cinema.vo.*;
+import com.stylefeng.guns.api.order.OrderServiceAPI;
 import com.stylefeng.guns.rest.modular.cinema.vo.CinemaConditionResponseVO;
 import com.stylefeng.guns.rest.modular.cinema.vo.CinemaFieldResponseVO;
 import com.stylefeng.guns.rest.modular.cinema.vo.CinemaFieldsResponseVO;
@@ -27,14 +28,20 @@ import java.util.List;
 public class CinemaController {
 
     /**
+     *  cache = "lru"
      *  结果缓存,用于加速热门数据的访问速度，Dubbo 提供声明式缓存，以减少用户加缓存的工作量
      *  缓存类型:
      *  lru 基于最近最少使用原则删除多余缓存，保持最热的数据被缓存。
      *  threadlocal 当前线程缓存，比如一个页面渲染，用到很多 portal，每个 portal 都要去查用户信息，通过线程缓存，可以减少这种多余访问。
      *  jcache 与 JSR107 集成，可以桥接各种缓存实现。
+     *  connections = 10
+     *
      */
-    @Reference(interfaceClass = CinemaServiceAPI.class,cache = "lru",check = false)
+    @Reference(interfaceClass = CinemaServiceAPI.class,cache = "lru",connections = 10,check = false)
     private CinemaServiceAPI cinemaServiceAPI;
+    @Reference(interfaceClass = OrderServiceAPI.class,check = false)
+    private OrderServiceAPI orderServiceAPI;
+
     /**
      * 查询影院列表-根据条件查询所有影院
      * @param cinemaQueryVO
@@ -116,15 +123,14 @@ public class CinemaController {
             CinemaInfoVO cinemaInfoVO = cinemaServiceAPI.getCinemaInfoById(cinemaId);
             FilmInfoVO filmInfo = cinemaServiceAPI.getFilmInfoByFieldId(fieldId);
             HallInfoVO hallInfoVO = cinemaServiceAPI.getFilmFieldInfo(fieldId);
-            //TODO 后续会对接订单接口
-            hallInfoVO.setSoldSeats("1,2,3");
-
+            //对接订单接口
+            String soldSeats = orderServiceAPI.getSoldSeatsByFieldId(fieldId);
+            hallInfoVO.setSoldSeats(soldSeats);
             CinemaFieldResponseVO cinemaFieldResponseVO = new CinemaFieldResponseVO();
             cinemaFieldResponseVO.setCinemaInfo(cinemaInfoVO);
             cinemaFieldResponseVO.setFilmInfo(filmInfo);
             cinemaFieldResponseVO.setHallInfo(hallInfoVO);
             return ResponseVO.success(cinemaFieldResponseVO,"http://img.meetingshop.cn/");
-
         }catch (Exception e){
             log.error("获取场次详细信息接口失败",e);
             return ResponseVO.serviceFail("获取场次详细信息接口失败");
