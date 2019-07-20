@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.plugins.Page;
 import com.google.common.util.concurrent.RateLimiter;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
+import com.stylefeng.guns.api.alipay.AlipayServiceAPI;
+import com.stylefeng.guns.api.alipay.vo.AlipayInfoVO;
+import com.stylefeng.guns.api.alipay.vo.AlipayResultVO;
 import com.stylefeng.guns.api.order.OrderServiceAPI;
 import com.stylefeng.guns.api.order.vo.OrderVO;
 import com.stylefeng.guns.rest.common.CurrentUser;
@@ -36,11 +39,23 @@ public class OrderController {
 
     @Reference(interfaceClass = OrderServiceAPI.class,group = "order2019",check = false)
     private OrderServiceAPI orderServiceAPI;
+
+    @Reference(interfaceClass = AlipayServiceAPI.class,check = false)
+    private AlipayServiceAPI alipayServiceAPI;
+
     //创建一个限流器，参数代表每秒生成的令牌数
     private static RateLimiter rateLimiter = RateLimiter.create(2);
 
+    private final static String IMG_PRE = "http://img.meetingshop.cn/";
 
 
+    /**
+     * fallbackMethod
+     * @param fieldId
+     * @param soldSeats
+     * @param seatsName
+     * @return
+     */
     public ResponseVO error(Integer fieldId,String soldSeats,String seatsName){
         return ResponseVO.serviceFail("抱歉，下单的人太多了，请稍后重试");
     }
@@ -144,6 +159,52 @@ public class OrderController {
             //通过limiter.acquire(i);来以阻塞的方式获取令牌
             double waitTime = rateLimiter.acquire(i);
             System.out.println("cutTime=" + System.currentTimeMillis() + " acq:" + i + " waitTime:" + waitTime);
+        }
+    }
+
+
+    /**
+     * 获取支付二维码
+     * @param orderId
+     * @return
+     */
+    @PostMapping("/getPayInfo")
+    public ResponseVO getPayInfo(@RequestParam("orderId") String orderId){
+        //获取当前登录人信息
+        String userId = CurrentUser.getCurrentUser();
+        if (StringUtils.isBlank(userId)){
+            return ResponseVO.serviceFail("抱歉，用户未登陆");
+        }
+        //返回订单二维码
+        AlipayInfoVO alipayInfoVO = alipayServiceAPI.getQRCode(orderId);
+        return ResponseVO.success(alipayInfoVO,IMG_PRE);
+    }
+
+    /**
+     * 获取支付结果
+     * @param orderId
+     * @return
+     */
+    @PostMapping("/getPayResult")
+    public ResponseVO getPayResult(@RequestParam("orderId")String orderId,
+                                   @RequestParam(name = "tryNums",required = false,defaultValue = "1")Integer tryNums){
+        //获取当前登录人信息
+        String userId = CurrentUser.getCurrentUser();
+        if (StringUtils.isBlank(userId)){
+            return ResponseVO.serviceFail("抱歉，用户未登陆");
+        }
+        if (tryNums >= 4){
+            return ResponseVO.serviceFail("订单支付失败，请稍后重试");
+        }else {
+            AlipayResultVO alipayResultVO = alipayServiceAPI.getOrderStatus(orderId);
+            if (alipayResultVO==null ||StringUtils.isBlank(alipayResultVO.getOrderId())){
+                AlipayResultVO alipayFailResultVO = new AlipayResultVO();
+                alipayFailResultVO.setOrderId(orderId);
+                alipayFailResultVO.setOrderStatus(0);
+                alipayFailResultVO.setOrderMsg("支付失败");
+                return ResponseVO.success(alipayFailResultVO);
+            }
+            return ResponseVO.success(alipayResultVO);
         }
     }
 

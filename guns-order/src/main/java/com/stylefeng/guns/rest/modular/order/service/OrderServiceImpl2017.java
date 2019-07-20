@@ -173,4 +173,36 @@ public class OrderServiceImpl2017 implements OrderServiceAPI {
         }
 
     }
+
+    @Override
+    public OrderVO getOrderInfoById(String orderId) {
+        OrderVO orderVO = moocOrderTMapper.getOrderInfoById(orderId);
+        return orderVO;
+    }
+
+    @Override
+    public boolean paySuccess(String orderId) {
+        MoocOrder2017T moocOrderT = new MoocOrder2017T();
+        moocOrderT.setUuid(orderId);
+        moocOrderT.setOrderStatus(1);//已支付
+        Integer num = moocOrderTMapper.updateById(moocOrderT);
+        if (num >= 1){
+            return true;
+        }else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean payFail(String orderId) {
+        MoocOrder2017T moocOrderT = new MoocOrder2017T();
+        moocOrderT.setUuid(orderId);
+        moocOrderT.setOrderStatus(2);//支付失败
+        Integer num = moocOrderTMapper.updateById(moocOrderT);
+        if (num >= 1){
+            return true;
+        }else {
+            return false;
+        }
+    }
 }
